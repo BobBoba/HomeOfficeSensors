@@ -6,6 +6,8 @@
 #include <ESP8266WiFi.h>
 #include "TaskScheduler/src/TaskScheduler.h"
 
+#include "Adafruit_BMP085_Library/Adafruit_BMP085.h"
+
 //#include <Wire.h>
 #include <LiquidCrystal_I2C1602V1/LiquidCrystal_I2C.h>
 #include <deque>
@@ -81,7 +83,7 @@ DHT dhtIn(AM2302PIN, DHT22);
 DHT dhtOut(AM2301PIN, DHT21);
 
 // Callback methods prototypes
-void EverySecond();
+void MainTask();
 void SendToMQTT();
 void MQPinger();
 
@@ -89,7 +91,7 @@ Scheduler runner;
 
 //Tasks
 //Task t4();
-Task EverySecondTask(1 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &EverySecond, &runner);
+Task EverySecondTask(3 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &MainTask, &runner);
 //Task MQPingerTask(3 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &MQPinger, &runner);
 //Task MQSenderTask(60 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &SendToMQTT, &runner);
 //Task TemperatureProcecessorTask(60000, TASK_FOREVER, &TemperatureProcessor);
@@ -126,7 +128,13 @@ int pirState = 0;
 
 #define AVERAGE_QUEUE_SIZE (1 * 60) // n-minutes
 
+//ADC
 Adafruit_ADS1115 ads(0x48);
+
+//Pressure
+Adafruit_BMP085 bmp;
+long bmpTemperature = 0, bmpPressure = 0, bmpAltitude = 0;
+
 
 //void callback(const MQTT::Publish& sub) {
 void callback(const char* topic, byte* payload, unsigned int length)
@@ -302,7 +310,12 @@ void setup()
 	//ads.setGain(GAIN_SIXTEEN);
 	//ads.begin();
 
+	if (!bmp.begin()) {
+		Serial.println("Could not find a valid BMP085 sensor, check wiring!");
+	}
+
 	lcd.init();
+	lcd.noAutoscroll();
 	lcd.backlight();// Включаем подсветку дисплея
 
 	lcd.print("Welcome!!!");
@@ -390,8 +403,26 @@ void setup()
 	//heap = ESP.getFreeHeap();
 }
 
-void EverySecond()
+void MainTask()
 {
+
+	static int counter = 0;
+
+
+	bmpTemperature = bmp.readTemperature();
+	bmpPressure = bmp.readPressure();
+	bmpAltitude = bmp.readAltitude();
+
+	Serial.print("BMP Temp(C):");
+	Serial.print(bmpTemperature*0.1, 1);
+	Serial.print("  Alt(m):");
+	Serial.print(bmpAltitude*0.01);
+	Serial.print("  Pressure(mm):");
+	Serial.println(bmpPressure / 133.3, 1);
+
+
+
+
 	// Reading temperature or humidity takes about 250 milliseconds!
 	// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
 
@@ -436,6 +467,7 @@ void EverySecond()
 
 	co2volts2 = GetAverageVoltage2();
 	*/
+
 	Serial.print("temperature: In:");
 	Serial.print(tempIn, 1);
 	Serial.print(" Out:");
@@ -465,24 +497,62 @@ void EverySecond()
 	//String lt = "Temp: ";
 	//lt += t;
 	//lcd.clear();
-	lcd.print("T ");
-	lcd.print(tempIn, 1);
-	lcd.write(byte(0)); // degrees symbol
-	lcd.print(" / ");
-	lcd.print(tempOut, 1);
-	lcd.write(byte(0)); // degrees symbol
-	//lcd.print("");
-	//lcd.println();
 
-	lcd.setCursor(0, 1);
-	//String lh = "Humidity: ";
-	lcd.print("H ");
-	lcd.print(humidityIn, 1);
-	lcd.print("%");
-	lcd.print(" / ");
-	lcd.print(humidityOut, 1);
-	lcd.print("%");
-	//lcd.println();
+	if (counter++ % 5 == 0)
+	{
+		//lcd.clear();
+		//lcd.setCursor(0, 0);
+		//String lt = "Temp: ";
+		//lt += t;
+
+		//lcd.print("Pressure: ");
+		//lcd.print(bmpPressure / 133.3, 1);
+		//lcd.print("mm");
+
+		int w = 0;
+		w += lcd.print("T ");
+		w += lcd.print(tempIn, 1);
+		w += lcd.write(byte(0)); // degrees symbol
+		w += lcd.print(" / Pr(mm)");
+
+		for (int i = w; i < DISPLAY_WIDTH; ++i)
+			lcd.print(" ");
+
+		w = 0;
+		lcd.setCursor(0, 1);
+		w += lcd.print("H ");
+		w += lcd.print(humidityIn, 1);
+		w += lcd.print("%");
+		w += lcd.print(" / ");
+		w += lcd.print(bmpPressure / 133.3, 1);
+		w += lcd.print("");
+		for (int i = w; i < DISPLAY_WIDTH; ++i)
+			lcd.print(" ");
+
+	}
+	else {
+
+		int w = 0;
+		w += lcd.print("T ");
+		w += lcd.print(tempIn, 1);
+		w += lcd.write(byte(0)); // degrees symbol
+		w += lcd.print(" / ");
+		w += lcd.print(tempOut, 1);
+		w += lcd.write(byte(0)); // degrees symbol
+		for (int i = w; i < DISPLAY_WIDTH; ++i)
+			lcd.print(" ");
+
+		w = 0;
+		lcd.setCursor(0, 1);
+		w += lcd.print("H ");
+		w += lcd.print(humidityIn, 1);
+		w += lcd.print("%");
+		w += lcd.print(" / ");
+		w += lcd.print(humidityOut, 1);
+		w += lcd.print("%");
+		for (int i = w; i < DISPLAY_WIDTH; ++i)
+			lcd.print(" ");
+	}
 
 	/*
 	lcd.setCursor(0, 2);
@@ -510,7 +580,7 @@ void EverySecond()
 
 		lcd.clear();
 		lcd.print("Memory Leak !!!");
-		delay(2000);
+		delay(3000);
 		restart();
 		//heap = ESP.getFreeHeap();
 	}
