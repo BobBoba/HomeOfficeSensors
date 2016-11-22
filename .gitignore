@@ -1,0 +1,22 @@
+# git ignore file
+
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Xx]64/
+[Xx]86/
+[Bb]uild/
+bld/
+[Bb]in/
+[Oo]bj/
+
+*.filters
+*.user
+
+
+passwords.cpp
+.vs*/
+*.tss
+*.suo
+__vm*/
