@@ -1,15 +1,17 @@
+#include <TaskScheduler.h>
+#include <Adafruit_Sensor.h>
 #include "passwords.h"
+#include <Wire.h>
 #include <Adafruit_ADS1015.h>
-#include <MQTT.h>
+//#include <MQTT.h>
 #include <PubSubClient.h>
 #include "DHT.h"
 #include <ESP8266WiFi.h>
-#include "TaskScheduler/src/TaskScheduler.h"
 
-#include "Adafruit_BMP085_Library/Adafruit_BMP085.h"
+#include "Adafruit_BMP085.h"
 
-//#include <Wire.h>
-#include <LiquidCrystal_I2C1602V1/LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <deque>
 #include <queue>
 
