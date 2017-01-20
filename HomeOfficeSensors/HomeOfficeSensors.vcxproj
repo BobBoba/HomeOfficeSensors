@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C5F80730-F44F-4478-BDAE-6634EFC2CA88}</ProjectGuid>
     <RootNamespace>ESP_led</RootNamespace>
-    <ProjectName>ESP_led</ProjectName>
+    <ProjectName>HomeOfficeSensors</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -63,8 +63,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>D:\OneDrive\work\Arduino\libraries\TaskScheduler\src;D:\OneDrive\work\Arduino\libraries\Adafruit_Unified_Sensor;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries\Wire;D:\OneDrive\work\Arduino\libraries\Adafruit_ADS1X15;D:\OneDrive\work\Arduino\libraries\PubSubClient\src;D:\OneDrive\work\Arduino\libraries\DHT_sensor_library;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries\ESP8266WiFi\src;D:\OneDrive\work\Arduino\libraries\ArduinoJson;D:\OneDrive\work\Arduino\libraries\Adafruit_BMP085_Library;D:\OneDrive\work\Arduino\libraries\LiquidCrystal_I2C;D:\Work\arduino-1.6.9\libraries;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries;D:\OneDrive\work\Arduino\libraries;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\libb64;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\spiffs;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\umm_malloc;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\variants\generic;$(ProjectDir)..\ESP_led;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\lwip\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\c++\4.8.2;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\c++\4.8.2\xtensa-lx106-elf;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\lib\gcc\xtensa-lx106-elf\4.8.2\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ForcedIncludeFiles>$(ProjectDir)__vm\.ESP_led.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>D:\OneDrive\work\Arduino\libraries\Adafruit_ADS1X15;D:\OneDrive\work\Arduino\libraries\Adafruit_BMP085_Library;D:\OneDrive\work\Arduino\libraries\Adafruit_Unified_Sensor;D:\OneDrive\work\Arduino\libraries\ArduinoJson;D:\OneDrive\work\Arduino\libraries\DHT_sensor_library;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries\ESP8266WiFi\src;D:\OneDrive\work\Arduino\libraries\LiquidCrystal_I2C;D:\OneDrive\work\Arduino\libraries\PubSubClient\src;D:\OneDrive\work\Arduino\libraries\TaskScheduler\src;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries\Wire;D:\Work\arduino-1.6.9\libraries;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\libraries;D:\OneDrive\work\Arduino\libraries;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\libb64;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\spiffs;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\cores\esp8266\umm_malloc;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\variants\generic;$(ProjectDir)..\HomeOfficeSensors;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\lwip\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\c++\4.8.2;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\c++\4.8.2\xtensa-lx106-elf;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\lib\gcc\xtensa-lx106-elf\4.8.2\include;C:\Users\email\AppData\Local\arduino15\packages\esp8266\hardware\esp8266\2.3.0\tools\sdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ProjectDir)__vm\.HomeOfficeSensors.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <PreprocessorDefinitions>__ESP8266_ESp8266__;__ESP8266_ESP8266__;__ets__;ICACHE_FLASH;F_CPU=80000000L;LWIP_OPEN_SRC;ARDUINO=10609;ARDUINO_ESP8266_ESP01;ARDUINO_ARCH_ESP8266;ESP8266;__cplusplus=201103L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -75,13 +75,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="ESP_led.ino">
+    <None Include="HomeOfficeSensors.ino">
       <FileType>CppCode</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="passwords.h" />
     <ClInclude Include="__vm\.ESP_led.vsarduino.h" />
+    <ClInclude Include="__vm\.HomeOfficeSensors.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="passwords.cpp" />

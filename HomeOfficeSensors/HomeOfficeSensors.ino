@@ -1,9 +1,7 @@
 #include <TaskScheduler.h>
 #include <Adafruit_Sensor.h>
-#include "passwords.h"
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
-//#include <MQTT.h>
 #include <PubSubClient.h>
 #include "DHT.h"
 #include <ESP8266WiFi.h>
