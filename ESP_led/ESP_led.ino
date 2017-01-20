@@ -7,6 +7,7 @@
 #include <PubSubClient.h>
 #include "DHT.h"
 #include <ESP8266WiFi.h>
+#include <ArduinoJson.h>
 
 #include "Adafruit_BMP085.h"
 
@@ -41,17 +42,17 @@ LiquidCrystal_I2C lcd(DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_LINES); // ”стана
 
 //#define MAC "18FE34D3F6C5"
 
-IPAddress server(192, 168, 0, 10); // mosquitto address
-WiFiClient wclient;
-PubSubClient client(server, 1883, wclient);
+//IPAddress server(192, 168, 0, 10); // mosquitto address
+WiFiClientSecure wclient;
+//PubSubClient client(server, 1883, wclient);
 //mac: 18fe34d3f6c5
 int counter = 0;
 int ms = 0;
 String mac = "";
-String pubTopic;// = "/ESP8266/"MAC"/DATA";
-String pubTopic2;// = "/ESP8266/"MAC;
-String controlTopic;// = "/ESP8266/"MAC"/CONTROL/#";
-String statTopic;// = "/ESP8266/"MAC"/STATUS/GPIO/4";
+//String pubTopic;// = "/ESP8266/"MAC"/DATA";
+//String pubTopic2;// = "/ESP8266/"MAC;
+//String controlTopic;// = "/ESP8266/"MAC"/CONTROL/#";
+//String statTopic;// = "/ESP8266/"MAC"/STATUS/GPIO/4";
 int GPIO = 4;
 const char* mqtt_user = "";
 const char* mqtt_pass = "";
@@ -86,14 +87,16 @@ DHT dhtOut(AM2301PIN, DHT21);
 
 // Callback methods prototypes
 void MainTask();
-void SendToMQTT();
-void MQPinger();
+//void SendToMQTT();
+//void MQPinger();
+void SendToIoTHub();
 
 Scheduler runner;
 
 //Tasks
 //Task t4();
 Task EverySecondTask(3 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &MainTask, &runner);
+Task IoTSenderTask(60 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &SendToIoTHub, &runner);
 //Task MQPingerTask(3 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &MQPinger, &runner);
 //Task MQSenderTask(60 * MILLISECONDS_IN_SECOND, TASK_FOREVER, &SendToMQTT, &runner);
 //Task TemperatureProcecessorTask(60000, TASK_FOREVER, &TemperatureProcessor);
@@ -135,188 +138,133 @@ Adafruit_ADS1115 ads(0x48);
 
 //Pressure
 Adafruit_BMP085 bmp;
-long bmpTemperature = 0, bmpPressure = 0, bmpAltitude = 0;
+double bmpTemperature = 0.0, bmpPressure = 0.0, bmpAltitude = 0.0;
 
 
-//void callback(const MQTT::Publish& sub) {
-void callback(const char* topic, byte* payload, unsigned int length)
+void httpPost(String content)
 {
-	Serial.print("Get data from subscribed topic ");
-	Serial.print(topic);
-	Serial.print(" => ");
-	Serial.println(reinterpret_cast<char*>(payload));
-	String expected = "/ESP8266/" + mac + "/GPIO/";
-	expected += GPIO;
-	if (expected == topic) {
-		String s = "ESP8266 GPIO_";
-		s += GPIO;
-		String stat = "{\"status\":";
-		if (strcmp(reinterpret_cast<char*>(payload), "true") == 0) {
-			digitalWrite(GPIO, 0);
-			s += " set LOW";
-			stat += "\"LOW\"}";
+	wclient.stop(); // закрываем подключение, если вдруг оно открыто
+
+	if (wclient.connect(azureHost, azurePort)) {
+		wclient.print("POST ");
+		wclient.print(azureUri);
+		wclient.println(" HTTP/1.1");
+		wclient.print("Host: ");
+		wclient.println(azureHost);
+		wclient.print("Authorization: ");
+		wclient.println(authSAS);
+		wclient.println("Connection: close");
+		wclient.print("Content-Type: ");
+		wclient.println("text/plain");
+		wclient.print("Content-Length: ");
+		wclient.println(content.length());
+		wclient.println();
+		wclient.println(content);
+		delay(200);
+	}
+	else {
+		Serial.println("HTTP POST send failed");
+	}
+}
+
+JsonObject& prepareJson()
+{
+	StaticJsonBuffer<1024> jsonBuffer;
+	JsonObject& jsonObj = jsonBuffer.createObject();
+
+	jsonObj["MAC"] = mac;
+
+	JsonObject& jsonBMP = jsonObj.createNestedObject("BMP085");
+
+	jsonBMP["temperature"] = false == isnan(bmpTemperature) ? bmpTemperature : 0.0;
+	jsonBMP["altitude"] = false == isnan(bmpAltitude) ? bmpAltitude : 0.0;
+	jsonBMP["pressure"] = false == isnan(bmpPressure) ? bmpPressure : 0.0;
+
+	JsonObject& jsonDHT22in = jsonObj.createNestedObject("DHT22in"); // IN
+	jsonDHT22in["temperature"] = false == isnan(tempIn) ? tempIn : 0.0;
+	jsonDHT22in["humidity"] = false == isnan(humidityIn) ? humidityIn : 0.0;
+
+	JsonObject& jsonDHT21out = jsonObj.createNestedObject("DHT21out"); // OUT
+	jsonDHT21out["temperature"] = false == isnan(tempOut) ? tempOut : 0.0;
+	jsonDHT21out["humidity"] = false == isnan(humidityOut) ? humidityOut : 0.0;
+
+	//if (DS18x20s.size() > 0)
+	//{
+	//	JsonArray& jsonDS18x20s = jsonObj.createNestedArray("DS18x20");
+
+	//	for (int p = 0, pc = DS18x20s.size(); p < pc; ++p)
+	//	{
+	//		JsonObject& jsonDS18x20 = jsonDS18x20s.createNestedObject();
+	//		jsonDS18x20["address"] = DS18x20s[p].saddr;
+	//		jsonDS18x20["temperature"] = DS18x20s[p].celsius;
+	//	}
+	//}
+
+	return jsonObj;// .printTo(buffer);
+
+}
+
+void SendToIoTHub()
+{
+	JsonObject& json = prepareJson();
+
+	String buffer;
+	json.printTo(buffer);
+
+	Serial.println("Send updated data to IoT Hub");
+	Serial.println(buffer);
+
+	//return;//temporary
+
+	httpPost(buffer);
+
+	String response = "";
+	char c;
+	while (wclient.available()) {
+		c = wclient.read();
+		response.concat(c);
+	}
+	if (response.equals(""))
+	{
+		Serial.println("empty response");
+	}
+	else
+	{
+		if (response.startsWith("HTTP/1.1 204")) {
+			Serial.println("String has been successfully send to Azure IoT Hub");
 		}
 		else {
-			digitalWrite(GPIO, 1);
-			s += " set HIGH";
-			stat += "\"HIGH\"}";
+			Serial.println("Error");
+			Serial.println(response);
 		}
-		client.publish(statTopic.c_str(), stat.c_str());
-		Serial.println(s);
 	}
-	// echo
-	//MQTT::Publish newpub(pubTopic, sub.payload(), sub.payload_len());
-	//client.publish(newpub);
-	client.publish(pubTopic.c_str(), payload, length);
+
 }
 
 void restart() {
 	Serial.println("Will reset and try again...");
 	abort();
 }
-
-float getMGValue()
-{
-	int32_t adc = ads.readADC_SingleEnded(0);
-
-	float Voltage = (adc * 7.812738425855281e-6) * 1000.0; // x16
-	//float Voltage = (adc * 1.5625476851710562456129642628254e-5) * 1000.0; // x8
-	return Voltage;
-}
-
-float GetAverageVoltage()
-{
-	//int16_t adc0;  // we read from the ADC, we have a sixteen bit integer as a result
-	//Voltage /= 16;
-	//int32_t adc = 0;
-
-	float Voltage = 0;
-
-	int i;
-	//float v = 0;
-
-	for (i = 0; i < READ_SAMPLE_TIMES; i++) {
-		Voltage += getMGValue();// ads.readADC_SingleEnded(0);
-		//v += analogRead(mg_pin);
-		delay(READ_SAMPLE_INTERVAL);
-	}
-	//v = (v / READ_SAMPLE_TIMES) * 5 / 1024;
-	Voltage = Voltage / READ_SAMPLE_TIMES;
-	//float Voltage = (adc * 0.1875) / 1000;
-	//float Voltage = (adc * 7.812738425855281e-6) * 1000.0;
-	//float Voltage = (adc * 1.5625476851710562456129642628254e-5) * 1000.0;
-
-	//Serial.print("     ");
-	//Serial.print("MG811 ADC: ");
-	//Serial.print(adc);
-	//Serial.print("MG811: ");
-	//Serial.print(Voltage, 2);
-	//Serial.println(" mV");
-
-	return Voltage;
-}
-
-float GetAverageVoltage2()
-{
-	auto size = valuesQueue.size();
-
-	//if (size < AVERAGE_QUEUE_SIZE)
-	if (size <= 0) //paranoid check
-		return 0;
-
-	float Voltage = 0;
-	for (auto begin = valuesQueue.begin(), end = valuesQueue.end(); begin != end; ++begin) {
-		Voltage += *begin;
-
-	}
-	//v = (v / READ_SAMPLE_TIMES) * 5 / 1024;
-	Voltage = Voltage / size;
-
-	return Voltage;
-}
-
-
-void SendToMQTT()
-{
-	//*
-	String payload = "{";
-
-	bool needComma = false;
-
-	if (humidityIn > 0)
-	{
-		payload += "\"Humidity\":"; payload += humidityIn;
-		needComma = true;
-	}
-
-	if (tempIn > 0)
-	{
-		if (needComma)
-			payload += ",";
-		payload += "\"Temperature\":"; payload += tempIn;
-		needComma = true;
-	}
-
-	if (valuesQueue.size() >= AVERAGE_QUEUE_SIZE && co2volts2 > 0)
-	{
-		if (needComma)
-			payload += ",";
-		payload += "\"MG811\":"; payload += String(co2volts2, 3);
-		needComma = true;
-	}
-
-	// чтобы не слать одно и тоже по тсо раз, экономим трафик
-	//if (lastSentPirState != pirState)
-	//{
-	lastSentPirState = pirState;
-
-	if (needComma)
-		payload += ",";
-	payload += "\"PIR\":"; payload += pirState;
-	needComma = true;
-	//}
-	//payload += ",\"HeatIndex\":"; payload += hic;
-	payload += "}";
-
-	Serial.print("Publish JSON: ");
-	Serial.print(payload);
-	if (client.publish(pubTopic2.c_str(), payload.c_str())) {
-		Serial.println(" - Ok");
-	}
-	else {
-		Serial.println(" - Failed");
-		//restart();
-	}//*/
-}
-
 void setup()
 {
+	// Setup console
+	Serial.begin(74880);
+	Serial.println();
+	Serial.println();
+
 	uint8_t macAddr[6];
 	WiFi.macAddress(macAddr);
 	//MAC2STR()
 	for (int i = 0; i < 6; ++i)
 		mac += String(macAddr[i], 16);
-
-	pubTopic = "/ESP8266/" + mac + "/DATA";
-	pubTopic2 = "/ESP8266/" + mac;
-	controlTopic = "/ESP8266/" + mac + "/CONTROL/#";
-	statTopic = "/ESP8266/" + mac + "/STATUS/GPIO/4";
-
-
-	//runner.init();
-
-	//runner.addTask(EverySecondTask);
-	//runner.addTask(MQSenderTask);
-	//runner.addTask(TemperatureProcecessorTask);
-
-	//ads.setGain(GAIN_SIXTEEN);
-	//ads.begin();
+	mac.toUpperCase();
 
 	if (!bmp.begin()) {
 		Serial.println("Could not find a valid BMP085 sensor, check wiring!");
 	}
 
 	lcd.init();
+	lcd.createChar(0, degree);
 	lcd.noAutoscroll();
 	lcd.backlight();// ¬ключаем подсветку диспле€
 
@@ -326,179 +274,146 @@ void setup()
 	lcd.print("MAC:");
 	lcd.print(mac);
 
-	delay(10);
-
-	lcd.createChar(0, degree);
-
-	// Setup console
-	Serial.begin(115200);
 	delay(2000);
-	Serial.println();
-	Serial.println();
 
-	//pinMode(GPIO, OUTPUT);
-	//digitalWrite(GPIO, 1);
 
-	client.setCallback(callback);
+	lcd.clear();
 
-	//Serial.print("Connecting to ");
-	//Serial.println(ssid);
+	lcd.setCursor(0, 0);
+	lcd.print("WiFi...");
 
-	/*
-	lcd.setCursor(0, 1);
-	lcd.print("Connecting");
 
 	WiFi.begin(ssid, pass);
 
-	char progress[] = "/-\|";
-	int idx = 0;
-	int retries = 0;
-	while ((WiFi.status() != WL_CONNECTED) && (retries < 20)) {
-	retries++;
+	Serial.print("Connecting to WiFi...");
+	int counter = 0;
+	while (WiFi.status() != WL_CONNECTED) {
+		delay(1000);
+		Serial.print(".");
+		lcd.print(".");
+		//display.clear();
+		//display.drawString(64, 10, "Connecting to WiFi");
+		//display.drawXbm(46, 30, 8, 8, counter % 3 == 0 ? activeSymbole : inactiveSymbole);
+		//display.drawXbm(60, 30, 8, 8, counter % 3 == 1 ? activeSymbole : inactiveSymbole);
+		//display.drawXbm(74, 30, 8, 8, counter % 3 == 2 ? activeSymbole : inactiveSymbole);
+		//display.display();
+
+		counter++;
+	}
+	Serial.println(" done!!!");
+	lcd.print(" OK");
+
+
+	lcd.setCursor(0, 1);
+	lcd.print("Azure...");
+
+	Serial.print("Connecting to ");
+	Serial.print(azureHost);
+	while (!wclient.connect(azureHost, azurePort)) {
+		Serial.println(" failed");
+		lcd.print(" Error");
+		delay(1000);
+		//return;
+	}
+	Serial.println(" done!!!");
+	lcd.print(" OK");
 	delay(500);
-	Serial.print(".");
-	lcd.setCursor(15, 1);
-	lcd.print(progress[idx]);
-	++idx;
-	if (idx >= 3)
-	idx = 0;
-	}
-	if (WiFi.status() == WL_CONNECTED) {
-	Serial.println("");
-	Serial.println("WiFi connected");
-	Serial.print("IP address: ");
-	Serial.println(WiFi.localIP());
-	WiFi.printDiag(Serial);
-
-	lcd.setCursor(0, 1);
-	lcd.print("                ");
-	lcd.setCursor(0, 1);
-	lcd.print(WiFi.localIP());
-	}
-	else {
-	restart();
-	}
-
-	pinMode(PIRPIN, INPUT);
-	*/
-	//Serial.println("Connecting to MQTT broker ");
-	//if (client.connect(MQTT::Connect(mqtt_client).set_auth(mqtt_user, mqtt_pass))) {
-	//	Serial.println("Connected to MQTT broker");
-	//	client.subscribe(controlTopic);
-	//}
-	//else {
-	//	//restart();
-	//}
-
-	//delay(2000);
-	//TemperatureProcessor();
-
-	//lastSend2 = secondsSinceStart;
 
 
 	EverySecondTask.enable();
-	//MQPingerTask.enable();
-	//MQSenderTask.enableDelayed(3 * MILLISECONDS_IN_SECOND);
 
-	//TemperatureProcecessorTask.enableDelayed(2000);
-
-	//heap = ESP.getFreeHeap();
+	IoTSenderTask.enableDelayed(5 * MILLISECONDS_IN_SECOND);
 }
 
 void MainTask()
 {
-
+	//bool valid = true;
 	static int counter = 0;
 
+	delay(10);
+	while (isnan(bmpTemperature = bmp.readTemperature()));
+	{
+		delay(1);
+	}
+	Serial.print("BMP Temp(C): ");
+	Serial.print(bmpTemperature, 1);
 
-	bmpTemperature = bmp.readTemperature();
-	bmpPressure = bmp.readPressure();
-	bmpAltitude = bmp.readAltitude();
+	delay(10);
+	while (isnan(bmpPressure = bmp.readPressure() / 133.3));
+	{
+		delay(1);
+	}
+	Serial.print(" | ");
+	Serial.print("Pressure(mm): ");
+	Serial.print(bmpPressure, 1);
 
-	Serial.print("BMP Temp(C):");
-	Serial.print(bmpTemperature*0.1, 1);
-	Serial.print("  Alt(m):");
-	Serial.print(bmpAltitude*0.01);
-	Serial.print("  Pressure(mm):");
-	Serial.println(bmpPressure / 133.3, 1);
+	delay(10);
+	while (isnan(bmpAltitude = bmp.readAltitude()));
+	{
+		delay(1);
+	}
+	Serial.print(" | ");
+	Serial.print("Alt(m): ");
+	Serial.print(bmpAltitude);
 
-
-
+	Serial.println();
 
 	// Reading temperature or humidity takes about 250 milliseconds!
 	// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
 
-	//tempIn = dhtIn.readTemperature();
-	tempIn = dhtIn.readTemperature();
-	humidityIn = dhtIn.readHumidity();
+	delay(10);
+	while (isnan(tempIn = dhtIn.readTemperature()))
+	{
+		delay(1);
+	}
+	Serial.print("tempIn(C): ");
+	Serial.print(tempIn, 1);
+
+	delay(10);
+	while (isnan(humidityIn = dhtIn.readHumidity()))
+	{
+		delay(1);
+	}
+	Serial.print(" | ");
+	Serial.print("humidityIn(%): ");
+	Serial.print(humidityIn, 1);
+
 
 	// Read temperature as Celsius (the default)
-	tempOut = dhtOut.readTemperature();
-	humidityOut = dhtOut.readHumidity();
-	if (isnan(humidityIn) || isnan(tempIn)
-		||
-		isnan(humidityOut) || isnan(tempOut)
-		)
+	delay(10);
+	while (isnan(tempOut = dhtOut.readTemperature()))
 	{
-		Serial.println("Failed to read from Internal DHT sensor!");
-
-		return;
+		delay(1);
 	}
-
-	// Read temperature as Fahrenheit (isFahrenheit = true)
-	//float f = dht.readTemperature(true);
-	// Compute heat index in Fahrenheit (the default)
-	// float hif = dht.computeHeatIndex(f, h);
-	// Compute heat index in Celsius (isFahreheit = false)
-	//float hic = dht.computeHeatIndex(t, h, false);
-	//*
-	// Check if any reads failed and exit early (to try again).
-
-
-
-	//auto co2volts = GetAverageVoltage2();
-
-	/*pirState = digitalRead(PIRPIN);
-
-
-	co2volts = GetAverageVoltage();
-
-	if (valuesQueue.size() >= AVERAGE_QUEUE_SIZE)
-	valuesQueue.pop();
-	valuesQueue.push(co2volts);
-
-	co2volts2 = GetAverageVoltage2();
-	*/
-
-	Serial.print("temperature: In:");
-	Serial.print(tempIn, 1);
-	Serial.print(" Out:");
+	Serial.print(" | ");
+	Serial.print("tempOut(C): ");
 	Serial.print(tempOut, 1);
 
-	Serial.print(" | humidity: ");
-	Serial.print(humidityIn, 1);
-	Serial.print(" Out: ");
+
+	delay(10);
+	while (isnan(humidityOut = dhtOut.readHumidity()))
+	{
+		delay(1);
+	}
+
+	Serial.print(" | ");
+	Serial.print("humidityOut(%): ");
 	Serial.print(humidityOut, 1);
+
+
+	//Serial.print(" Out:");
+	//Serial.print(tempOut, 1);
+
+	//Serial.print(" | humidity: ");
+	//Serial.print(humidityIn, 1);
+	//Serial.print(" Out: ");
+	//Serial.print(humidityOut, 1);
 
 	Serial.println();
 
-	//Serial.print("  co2volts: ");
-	//Serial.print(co2volts, 3);
-	//
-	//Serial.print("  co2volts2[");
-	//Serial.print(valuesQueue.size());
-	//Serial.print("/");
-	//Serial.print(AVERAGE_QUEUE_SIZE);
-	//Serial.print("]: ");
-	//Serial.println(co2volts2, 3);
+	delay(10);
 
-
-	//lcd.clear();
-	//lcd.autoscroll();
 	lcd.setCursor(0, 0);
-	//String lt = "Temp: ";
-	//lt += t;
-	//lcd.clear();
 
 	if (counter++ % 5 == 0)
 	{
@@ -526,7 +441,7 @@ void MainTask()
 		w += lcd.print(humidityIn, 1);
 		w += lcd.print("%");
 		w += lcd.print(" / ");
-		w += lcd.print(bmpPressure / 133.3, 1);
+		w += lcd.print(bmpPressure, 1);
 		w += lcd.print("");
 		for (int i = w; i < DISPLAY_WIDTH; ++i)
 			lcd.print(" ");
@@ -556,27 +471,6 @@ void MainTask()
 			lcd.print(" ");
 	}
 
-	/*
-	lcd.setCursor(0, 2);
-	lcd.print("MG811: ");
-	lcd.print(co2volts2, 3);
-	lcd.print(" mV    ");
-
-	lcd.setCursor(0, 3);
-	auto pir = String();
-	pir.reserve(DISPLAY_WIDTH);
-	pir += "PIR: ";
-	pir += pirState == 0 ? "off" : "on";
-	//lcd.print("PIR: ");
-	//lcd.print(pirState == 0 ? "off                 " : "on                  ");
-	lcd.print(pir.c_str());
-	*/
-	//if (micros() / 1000 - ms > 1000 || ms > micros() / 1000) {
-	//Serial.print("Free heap: ");
-	//Serial.print(ESP.getFreeHeap());
-	//Serial.println(" bytes");
-
-	//if (heap > ESP.getFreeHeap()) {
 	if (ESP.getFreeHeap() < 1000) {
 		Serial.println("Detect mem leak!");
 
@@ -584,99 +478,10 @@ void MainTask()
 		lcd.print("Memory Leak !!!");
 		delay(3000);
 		restart();
-		//heap = ESP.getFreeHeap();
 	}
-	//ms = micros() / 1000;
-	//}
-
-	//heap = ESP.getFreeHeap();
 }
 
 void loop()
 {
 	runner.execute();
-}
-
-
-/*if (micros() / 1000 - ms > 1000 || ms > micros() / 1000) {
-		//Serial.print("HEAP: ");
-		//Serial.println(ESP.getFreeHeap());
-		if (heap > ESP.getFreeHeap()) {
-		Serial.println("Detect mem leak!");
-		heap = ESP.getFreeHeap();
-		}
-		ms = micros() / 1000;
-		++secondsSinceStart;
-		}
-		if (seconds % 10 == 0 && lastSend1 != seconds) {
-		lastSend1 = seconds;
-
-		//seconds = 0;
-		++counter;
-		String payload = "{\"micros\":";
-		payload += ms;
-		payload += ",\"counter\":";
-		payload += counter;
-		payload += "}";
-
-
-		if (client.connected()) {
-		Serial.print("Sending payload: ");
-		Serial.print(payload);
-		if (client.publish(pubTopic, (char*) payload.c_str())) {
-		Serial.println(" Publish OK");
-		} else {
-		restart();
-		}
-		} else {
-		restart();
-		}
-		}
-
-		if (secondsSinceStart % 60 == 0 && lastSend2 != secondsSinceStart) {
-		lastSend2 = secondsSinceStart;
-		proceedTemperature();
-		}//*/
-
-void MQPinger()
-{
-	if (!client.loop())
-	{
-		Serial.println("client.loop() failed");
-
-		if (!client.connected())
-		{
-			Serial.print("client.connected() failed, state: ");
-			Serial.println(client.state());
-
-			Serial.println("Connecting to MQTT broker...");
-			//Serial.println("!client.loop()");
-
-			if (client.connect(mqtt_client, mqtt_user, mqtt_pass))
-			{
-				Serial.println("Connected to MQTT broker");
-				client.subscribe(controlTopic.c_str());
-
-
-				//String payload = "{";
-				//payload += "\"Online\":"; payload += "true";
-				////payload += ",\"Temperature\":"; payload += t;
-				////payload += ",\"HeatIndex\":"; payload += hic;
-				//payload += "}";
-
-				//Serial.print("Sending payload: ");
-				//Serial.print(payload);
-				//if (client.publish(pubTopic2.c_str(), payload.c_str())) {
-				//	Serial.println(" - Publish OK");
-				//}
-				//else {
-				//	//restart();
-				//}
-
-			}
-		}
-		//restart();
-	}
-
-
 }

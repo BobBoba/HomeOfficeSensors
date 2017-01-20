@@ -12,6 +12,12 @@
 extern const char *ssid;
 extern const char *pass;
 
+extern char azureHost[];
+extern int azurePort;
+extern char authSAS[];
+extern char deviceName[];
+extern char azureUri[];
+
 
 #endif
 
