@@ -11,4 +11,4 @@ It updates screen every second.
 
 Every minute it send telemetry to Azure IoT Hub.
 
-![Photo](https://github.com/BobBoba/repository/blob/master/img/20170120_065400432_iOS.jpg)
+![Photo](https://github.com/BobBoba/HomeOfficeSensors/blob/master/20170120_065400432_iOS.jpg)
