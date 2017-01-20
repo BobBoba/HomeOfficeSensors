@@ -1,4 +1,4 @@
-#include <TaskScheduler.h>
+п»ї#include <TaskScheduler.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
@@ -35,8 +35,8 @@ public:
 #define DISPLAY_WIDTH 16
 #define DISPLAY_LINES 2
 
-//LiquidCrystal_I2C lcd(0x27, 16, 2); // Устанавливаем дисплей
-LiquidCrystal_I2C lcd(DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_LINES); // Устанавливаем дисплей
+//LiquidCrystal_I2C lcd(0x27, 16, 2); // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРёСЃРїР»РµР№
+LiquidCrystal_I2C lcd(DISPLAY_I2C_ADDR, DISPLAY_WIDTH, DISPLAY_LINES); // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРёСЃРїР»РµР№
 
 //#define MAC "18FE34D3F6C5"
 
@@ -115,10 +115,10 @@ iterable_queue<double> valuesQueue;
 #define         READ_SAMPLE_INTERVAL         (10)    //define how many samples you are going to take in normal operation
 #define         READ_SAMPLE_TIMES            (10)     //define the time interval(in milisecond) between each samples in 
 
-// усредненное за n-замеров значение датчика
+// СѓСЃСЂРµРґРЅРµРЅРЅРѕРµ Р·Р° n-Р·Р°РјРµСЂРѕРІ Р·РЅР°С‡РµРЅРёРµ РґР°С‚С‡РёРєР°
 double co2volts = 0;
 
-// усредненное значение за последние измерения, взятые из истории
+// СѓСЃСЂРµРґРЅРµРЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ Р·Р° РїРѕСЃР»РµРґРЅРёРµ РёР·РјРµСЂРµРЅРёСЏ, РІР·СЏС‚С‹Рµ РёР· РёСЃС‚РѕСЂРёРё
 double co2volts2 = 0;
 
 double tempIn = 0;
@@ -141,7 +141,7 @@ double bmpTemperature = 0.0, bmpPressure = 0.0, bmpAltitude = 0.0;
 
 void httpPost(String content)
 {
-	wclient.stop(); // закрываем подключение, если вдруг оно открыто
+	wclient.stop(); // Р·Р°РєСЂС‹РІР°РµРј РїРѕРґРєР»СЋС‡РµРЅРёРµ, РµСЃР»Рё РІРґСЂСѓРі РѕРЅРѕ РѕС‚РєСЂС‹С‚Рѕ
 
 	if (wclient.connect(azureHost, azurePort)) {
 		wclient.print("POST ");
@@ -264,7 +264,7 @@ void setup()
 	lcd.init();
 	lcd.createChar(0, degree);
 	lcd.noAutoscroll();
-	lcd.backlight();// Включаем подсветку дисплея
+	lcd.backlight();// Р’РєР»СЋС‡Р°РµРј РїРѕРґСЃРІРµС‚РєСѓ РґРёСЃРїР»РµСЏ
 
 	lcd.print("Welcome!!!");
 
